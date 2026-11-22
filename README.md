@@ -342,24 +342,10 @@ python -m unittest discover -s tests -v
 | `test_validacao_entradas` | previsão com número errado de entradas gera erro |
 | `test_predict_nao_altera_pesos` | prever não modifica a rede |
 
----
-
-## 11. Roteiro sugerido para a demonstração
-
-1. **Estrutura do código:** mostrar o pacote `rna/` e a responsabilidade de cada arquivo (seção 5).
-2. **Algoritmos principais:** explicar `forward`, `backward` (deltas antes da atualização), a inicialização e a
-   normalização só com o treino.
-3. **Teste do gradiente:** rodar os testes e explicar que o backpropagation foi validado numericamente.
-4. **Treinamento:** na interface gráfica, configurar uma arquitetura, treinar e mostrar o gráfico do MSE e o
-   gráfico previsto × real.
-5. **Persistência:** fazer uma previsão (ex.: sementes 250, nitrogênio 30), anotar o valor, baixar o JSON,
-   recarregar a página, carregar o JSON e repetir a previsão: o valor deve ser idêntico.
-6. **Flexibilidade:** mudar a arquitetura (ex.: duas camadas ocultas, tanh e relu) sem mexer no código.
-7. **Linha de comando (opcional):** mostrar `train`, `info` e `predict`.
 
 ---
 
-## 12. Perguntas frequentes
+## 11. Perguntas frequentes
 
 **Por que o MSE de teste é diferente do de treino?**
 Porque o teste tem poucas amostras e os dados são ruidosos. Mudar a seed muda quais amostras caem no teste.
