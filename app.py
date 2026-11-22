@@ -18,7 +18,7 @@ st.set_page_config(page_title="MLP configurável", page_icon="🧠", layout="wid
 st.title("🧠 Sistema Configurável de Redes Neurais (MLP)")
 
 ss = st.session_state
-for k in ("net", "norm", "meta", "history", "test_mse"):
+for k in ("net", "norm", "meta", "history", "test_mse", "test_df"):
     ss.setdefault(k, None)
 
 
@@ -81,6 +81,7 @@ with tab_train:
             X, Y, in_names, out_names = ds.load_csv(path, in_cols, out_cols)
             net = NeuralNetwork.build(len(in_names), specs, seed=int(seed))
             ds.check_compatibility(net, X, Y)
+            ranges = [[min(c), max(c)] for c in zip(*X)]  # faixa real de cada entrada (para a aba Prever)
             tr, va, te = ds.split(X, Y, p_train, p_val, p_test, seed=int(seed))
             normalizer = None
             if norm_method != "none":
@@ -104,7 +105,9 @@ with tab_train:
             train(net, tr, va, int(epochs), float(lr), seed=int(seed), on_epoch=on_epoch, lr_decay=float(decay))
             ss.net, ss.norm, ss.history = net, normalizer, hist
             ss.test_mse = net.mse(*te)
-            ss.meta = {"input_names": in_names, "output_names": out_names, "lr": lr,
+            preds = [net.forward(x) for x in te[0]]  # só propagação direta
+            ss.test_df = pd.DataFrame({"real": [y[0] for y in te[1]], "previsto": [p[0] for p in preds]})
+            ss.meta = {"input_names": in_names, "output_names": out_names, "input_ranges": ranges, "lr": lr,
                        "lr_decay": decay, "epochs": int(epochs), "seed": int(seed)}
             st.success("Treinamento concluído.")
         except ValueError as e:
@@ -112,6 +115,10 @@ with tab_train:
 
     if ss.net is not None and ss.test_mse is not None:
         st.metric("MSE de teste (avaliação final)", f"{ss.test_mse:.2f}")
+        if ss.test_df is not None:
+            st.subheader("Valor previsto × valor real (conjunto de teste)")
+            st.caption("Se a rede acertasse tudo, os pontos formariam uma reta ascendente (previsto = real). Com dados ruidosos, alguma dispersão é esperada.")
+            st.scatter_chart(ss.test_df, x="real", y="previsto")
         tmp = os.path.join(tempfile.gettempdir(), "modelo_streamlit.json")
         save_model(tmp, ss.net, ss.norm, ss.meta)
         with open(tmp, "rb") as f:
@@ -124,7 +131,17 @@ with tab_pred:
     else:
         names = (ss.meta or {}).get("input_names") or [f"entrada_{i + 1}" for i in range(ss.net.n_inputs)]
         st.write("Informe os valores de entrada (sem normalizar; a normalização é aplicada automaticamente):")
-        vals = [st.number_input(n, value=0.0, key=f"p_{n}") for n in names]
+        ranges = (ss.meta or {}).get("input_ranges")
+        vals = []
+        for i, n in enumerate(names):
+            if ranges:
+                lo, hi = ranges[i]
+                v = st.number_input(f"{n}  (faixa do dataset: {lo:g} a {hi:g})", value=float((lo + hi) / 2), key=f"p_{n}")
+                if not lo <= v <= hi:
+                    st.warning(f"{n} está fora da faixa vista no treino; a previsão pode ser pouco confiável.")
+            else:
+                v = st.number_input(n, value=0.0, key=f"p_{n}")
+            vals.append(v)
         if st.button("Calcular previsão"):
             try:
                 out = predict(ss.net, ss.norm, vals)
@@ -148,3 +165,6 @@ with tab_load:
         st.write(f"**Entradas:** {ss.net.n_inputs} · **Normalização:** {ss.norm.method if ss.norm else 'nenhuma'}")
         for i, l in enumerate(ss.net.layers, 1):
             st.write(f"Camada {i}: {len(l.neurons)} neurônios · {l.activation_name}")
+        m = ss.meta or {}
+        if m.get("epochs"):
+            st.caption(f"Treinada por {m['epochs']} épocas, taxa {m.get('lr')}, seed {m.get('seed')}.")

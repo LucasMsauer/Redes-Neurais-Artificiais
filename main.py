@@ -64,7 +64,8 @@ def cmd_train(a):
     history = train(net, train_set, val_set, a.epochs, a.lr, seed=a.seed, on_epoch=show, lr_decay=a.lr_decay)
     print(f"\nMSE de teste (avaliação final): {net.mse(*test_set):.4f}")
 
-    meta = {"input_names": in_names, "output_names": out_names, "lr": a.lr, "lr_decay": a.lr_decay, "epochs": a.epochs, "seed": a.seed}
+    ranges = [[min(c), max(c)] for c in zip(*X)]
+    meta = {"input_names": in_names, "input_ranges": ranges, "output_names": out_names, "lr": a.lr, "lr_decay": a.lr_decay, "epochs": a.epochs, "seed": a.seed}
     save_model(a.out, net, normalizer, meta)
     print(f"Rede salva em {a.out}")
     if a.history:
